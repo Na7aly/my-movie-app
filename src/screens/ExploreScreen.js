@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  FlatList,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
-import MovieCard from '../components/MovieCard'; 
-import { fetchTopMovies, fetchTrendingMovies, searchMoviesByTitle } from '../services/api'; 
-
+import { View, FlatList, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import MovieCard from '../components/MovieCard';
+import { fetchTopMovies, fetchTrendingMovies, searchMoviesByTitle } from '../services/api';
+import MovieDetailsModal from '../components/MovieDetailsModal'; 
 
 const ExploreScreen = () => {
   const [topMovies, setTopMovies] = useState([]);
   const [trendingMovies, setTrendingMovies] = useState([]);
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false); 
+  const [selectedMovie, setSelectedMovie] = useState(null); 
 
   useEffect(() => {
     fetchMovies();
@@ -29,7 +23,7 @@ const ExploreScreen = () => {
       setTopMovies(top);
       setTrendingMovies(trending);
     } catch (error) {
-      console.error('Eroare la obținerea filmelor:', error.message);
+      console.error('Error fetching movies:', error.message);
     }
   };
 
@@ -37,70 +31,89 @@ const ExploreScreen = () => {
     if (search.trim() === '') return;
     try {
       const result = await searchMoviesByTitle(search);
-      setSearchResults(result ? [result] : []); 
+      setSearchResults(result ? [result] : []);
     } catch (error) {
-      console.error('Eroare la căutare:', error.message);
+      console.error('Error searching:', error.message);
     }
   };
 
+  const handleMoviePress = (movie) => {
+    setSelectedMovie(movie); 
+    setModalVisible(true); 
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false); 
+    setSelectedMovie(null); 
+  };
+
   return (
-    <ScrollView style={styles.container}>
-     
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Caută un film..."
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </TouchableOpacity>
-      </View>
+    <FlatList
+      ListHeaderComponent={
+        <>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search for a movie..."
+            />
+            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+              <Text style={styles.searchButtonText}>Search</Text>
+            </TouchableOpacity>
+          </View>
 
-     
-      {searchResults.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rezultatele căutării</Text>
-          <FlatList
-            data={searchResults}
-            keyExtractor={(item) => item.imdbID}
-            renderItem={({ item }) => <MovieCard movie={item} />}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          />
-        </View>
-      )}
+          {searchResults.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Search Results</Text>
+              <FlatList
+                data={searchResults}
+                keyExtractor={(item) => item.imdbID}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                    <MovieCard movie={item} />
+                  </TouchableOpacity>
+                )}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+              />
+            </View>
+          )}
 
-      
-      <View style={styles.row}>
-        
-        <View style={styles.column}>
-          <Text style={styles.sectionTitle}>Top Movies</Text>
-          <FlatList
-            data={topMovies}
-            keyExtractor={(item) => item.imdbID}
-            renderItem={({ item }) => <MovieCard movie={item} />}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
+          <View style={styles.row}>
+            <View style={styles.column}>
+              <Text style={styles.sectionTitle}>Top Movies</Text>
+              <FlatList
+                data={topMovies}
+                keyExtractor={(item) => item.imdbID}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                    <MovieCard movie={item} />
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
 
-        <View style={styles.column}>
-          <Text style={styles.sectionTitle}>Trending Movies</Text>
-          <FlatList
-            data={trendingMovies}
-            keyExtractor={(item) => item.imdbID}
-            renderItem={({ item }) => (
-              <View style={styles.trendingCard}>
-                <MovieCard movie={item} />
-                <Text style={styles.movieYear}>{item.Year}</Text>
-              </View>
-            )}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      </View>
-    </ScrollView>
+            <View style={styles.column}>
+              <Text style={styles.sectionTitle}>Trending Movies</Text>
+              <FlatList
+                data={trendingMovies}
+                keyExtractor={(item) => item.imdbID}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                    <MovieCard movie={item} />
+                  </TouchableOpacity>
+                )}
+                showsVerticalScrollIndicator={false}
+              />
+            </View>
+          </View>
+        </>
+      }
+      keyExtractor={(item) => item.imdbID}
+      ListFooterComponent={<MovieDetailsModal visible={modalVisible} movie={selectedMovie} onClose={handleCloseModal} />}
+    />
   );
 };
 
@@ -113,7 +126,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    margin: 20,
   },
   searchInput: {
     flex: 1,
@@ -124,7 +137,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   searchButton: {
-    backgroundColor: '#fc842d',
+    backgroundColor: '#FF6700',
     padding: 10,
     borderRadius: 5,
   },
@@ -133,12 +146,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   section: {
-    marginVertical: 20,
+    marginLeft: 35,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 20,
+    margin: 0,
+    textAlign: 'center',
+    marginTop: 0,
   },
   row: {
     flexDirection: 'row',
@@ -147,15 +163,6 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     marginHorizontal: 5,
-  },
-  trendingCard: {
-    marginBottom: 10,
-    alignItems: 'center',
-  },
-  movieYear: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 5,
   },
 });
 

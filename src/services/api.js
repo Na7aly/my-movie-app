@@ -1,7 +1,5 @@
-
 import axios from 'axios';
-import { API_KEY, API_HOST, API_URL } from '@env';  
-
+import { API_KEY, API_HOST, API_URL } from '@env';
 
 export const fetchMovies = async (searchTerm, page = 1) => {
   try {
@@ -16,9 +14,14 @@ export const fetchMovies = async (searchTerm, page = 1) => {
         'x-rapidapi-host': API_HOST,
       },
     });
+
+    if (!response.data || !response.data.Search) {
+      throw new Error('No movies found for this search term.');
+    }
+
     return response.data.Search || [];
   } catch (error) {
-    console.error('Eroare la obținerea filmelor:', error.message);
+    console.error('Error fetching movies:', error.message);
     throw error;
   }
 };
@@ -36,9 +39,14 @@ export const fetchTopMovies = async () => {
         'x-rapidapi-host': API_HOST,
       },
     });
+
+    if (!response.data || !response.data.Search) {
+      throw new Error('No popular movies found.');
+    }
+
     return response.data.Search || [];
   } catch (error) {
-    console.error('Eroare la obținerea Top Movies:', error.message);
+    console.error('Error fetching top movies:', error.message);
     throw error;
   }
 };
@@ -56,13 +64,17 @@ export const fetchTrendingMovies = async () => {
         'x-rapidapi-host': API_HOST,
       },
     });
+
+    if (!response.data || !response.data.Search) {
+      throw new Error('No trending movies found.');
+    }
+
     return response.data.Search || [];
   } catch (error) {
-    console.error('Eroare la obținerea Trending Movies:', error.message);
+    console.error('Error fetching trending movies:', error.message);
     throw error;
   }
 };
-
 
 export const searchMoviesByTitle = async (title) => {
   try {
@@ -76,13 +88,17 @@ export const searchMoviesByTitle = async (title) => {
         'x-rapidapi-host': API_HOST,
       },
     });
+
+    if (!response.data) {
+      throw new Error('No movie found with this title.');
+    }
+
     return response.data || {};
   } catch (error) {
-    console.error('Eroare la căutarea filmului:', error.message);
+    console.error('Error searching for movie:', error.message);
     throw error;
   }
 };
-
 
 export const fetchMovieDetails = async (imdbID) => {
   try {
@@ -96,11 +112,14 @@ export const fetchMovieDetails = async (imdbID) => {
         'x-rapidapi-host': API_HOST,
       },
     });
+
+    if (!response.data) {
+      throw new Error('No details found for this movie.');
+    }
+
     return response.data || {};
   } catch (error) {
-    console.error('Eroare la obținerea detaliilor filmului:', error.message);
+    console.error('Error fetching movie details:', error.message);
     throw error;
   }
 };
-
-

@@ -1,19 +1,61 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MovieDetailsModal from '../components/MovieDetailsModal'; 
 import { fetchMovieDetails } from '../services/api'; 
-
 
 const MyList = () => {
   const [myList, setMyList] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+ 
+  const addMovieToList = async (movie) => {
+    try {
+      const exists = myList.some((item) => item.imdbID === movie.imdbID);
+      if (exists) {
+        Alert.alert('Duplicate Movie', 'This movie is already in your list!');
+        return;
+      }
+
+      const updatedList = [movie, ...myList];  
+      setMyList(updatedList);
+
+    
+      await AsyncStorage.setItem('myList', JSON.stringify(updatedList));
+
+      Alert.alert('Success', 'Movie added to your list!');
+    } catch (error) {
+      console.error('Error adding the movie:', error.message);
+    }
+  };
+
+ 
+  const removeMovieFromList = async (movie) => {
+    try {
+
+      const updatedList = myList.filter((item) => item.imdbID !== movie.imdbID);
+      setMyList(updatedList);
+
+      
+      await AsyncStorage.setItem('myList', JSON.stringify(updatedList));
+
+      Alert.alert('Movie Removed', 'Movie removed from your list!');
+    } catch (error) {
+      console.error('Error removing the movie:', error.message);
+    }
+  };
+
+  
   const getMyList = async () => {
     try {
       const savedMovies = await AsyncStorage.getItem('myList');
-      setMyList(savedMovies ? JSON.parse(savedMovies) : []);
+      const parsedMovies = savedMovies ? JSON.parse(savedMovies) : [];
+      
+      const uniqueMovies = Array.from(new Set(parsedMovies.map((movie) => movie.imdbID)))
+        .map((id) => parsedMovies.find((movie) => movie.imdbID === id));
+
+      setMyList(uniqueMovies);
     } catch (error) {
       console.error('Error getting the movie list:', error.message);
     }
@@ -22,17 +64,6 @@ const MyList = () => {
   useEffect(() => {
     getMyList();
   }, []);
-
-  const removeMovieFromList = async (movie) => {
-    try {
-      const updatedList = myList.filter((item) => item.imdbID !== movie.imdbID);
-      await AsyncStorage.setItem('myList', JSON.stringify(updatedList));
-      setMyList(updatedList);
-      alert('Movie removed from your list!');
-    } catch (error) {
-      console.error('Error removing the movie:', error.message);
-    }
-  };
 
   const openMovieDetails = async (movie) => {
     try {
@@ -49,7 +80,7 @@ const MyList = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My List</Text>
+      <Text style={styles.title}>My Movie List</Text>
       <FlatList
         data={myList}
         keyExtractor={(item) => item.imdbID}
@@ -59,7 +90,9 @@ const MyList = () => {
               <Image source={{ uri: item.Poster }} style={styles.movieImage} />
               <View style={styles.textContainer}>
                 <Text style={styles.movieTitle}>{item.Title}</Text>
-                <TouchableOpacity onPress={() => removeMovieFromList(item)}>
+                <TouchableOpacity 
+                  style={styles.removeButton} 
+                  onPress={() => removeMovieFromList(item)}>
                   <Text style={styles.removeText}>Remove</Text>
                 </TouchableOpacity>
               </View>
@@ -82,23 +115,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F2F1EF',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
+    textAlign: 'center', 
+    color: '#FF6700',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', 
+    textShadowOffset: { width: 1, height: 1 }, 
+    textShadowRadius: 3, 
   },
   movieItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-    alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 15,
+  alignItems: 'center',
+  backgroundColor: '#fff',
+  padding: 20,
+  borderRadius: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 2, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  elevation: 5,
   },
   movieImage: {
     width: 100,
     height: 150,
-    marginRight: 10,
+    marginRight: 20,
     borderRadius: 5,
   },
   textContainer: {
@@ -107,8 +153,16 @@ const styles = StyleSheet.create({
   movieTitle: {
     fontSize: 18,
   },
+  removeButton: {
+    marginTop: 10,
+    backgroundColor: '#FF6700',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignSelf: 'flex-end',
+  },
   removeText: {
-    color: 'red',
+    color: '#fff',
     fontSize: 16,
   },
 });
