@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; 
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MovieDetailsModal from '../components/MovieDetailsModal'; 
 import { fetchMovieDetails } from '../services/api'; 
+import { useFocusEffect } from '@react-navigation/native'; 
 
 const MyList = () => {
   const [myList, setMyList] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
- 
+  
   const addMovieToList = async (movie) => {
     try {
       const exists = myList.some((item) => item.imdbID === movie.imdbID);
@@ -21,7 +22,6 @@ const MyList = () => {
       const updatedList = [movie, ...myList];  
       setMyList(updatedList);
 
-    
       await AsyncStorage.setItem('myList', JSON.stringify(updatedList));
 
       Alert.alert('Success', 'Movie added to your list!');
@@ -30,14 +30,12 @@ const MyList = () => {
     }
   };
 
- 
+  
   const removeMovieFromList = async (movie) => {
     try {
-
       const updatedList = myList.filter((item) => item.imdbID !== movie.imdbID);
       setMyList(updatedList);
 
-      
       await AsyncStorage.setItem('myList', JSON.stringify(updatedList));
 
       Alert.alert('Movie Removed', 'Movie removed from your list!');
@@ -46,7 +44,6 @@ const MyList = () => {
     }
   };
 
-  
   const getMyList = async () => {
     try {
       const savedMovies = await AsyncStorage.getItem('myList');
@@ -61,9 +58,14 @@ const MyList = () => {
     }
   };
 
-  useEffect(() => {
-    getMyList();
+  
+  const fetchData = useCallback(() => {
+    getMyList(); 
   }, []);
+
+  
+  useFocusEffect(fetchData);
+
 
   const openMovieDetails = async (movie) => {
     try {
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center', 
+    textAlign: 'center',
     color: '#FF6700',
     textShadowColor: 'rgba(0, 0, 0, 0.3)', 
     textShadowOffset: { width: 1, height: 1 }, 
@@ -129,17 +131,17 @@ const styles = StyleSheet.create({
   },
   movieItem: {
     flexDirection: 'row',
-  justifyContent: 'space-between',
-  marginBottom: 15,
-  alignItems: 'center',
-  backgroundColor: '#fff',
-  padding: 20,
-  borderRadius: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 2, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  elevation: 5,
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   movieImage: {
     width: 100,

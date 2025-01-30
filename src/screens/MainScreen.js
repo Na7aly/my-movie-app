@@ -1,26 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, PanResponder, Animated } from 'react-native';
-import { fetchMovies } from '../services/api';
+import { fetchMovies, fetchMovieDetails } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 
 const MainScreen = () => {
-  const [recommendedMovie, setRecommendedMovie] = useState(null);
+  const [movieQueue, setMovieQueue] = useState([]); 
   const [loading, setLoading] = useState(true);
-  const [swipeAnim] = useState(new Animated.Value(0)); 
+  const [swipeAnim] = useState(new Animated.Value(0));
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [myList, setMyList] = useState([]); 
 
-  const getRecommendedMovie = async () => {
+  const getRecommendedMovies = async () => {
     try {
-      const data = await fetchMovies('Avengers Endgame'); 
+      const data = await fetchMovies('Avengers Endgame');
       if (data && data.length > 0) {
-        const randomMovie = data[Math.floor(Math.random() * data.length)];
-        setRecommendedMovie(randomMovie);
+        setMovieQueue(prevQueue => [...prevQueue, ...data]); 
       } else {
         console.log('No movies found.');
       }
     } catch (error) {
-      console.error('Error fetching recommended movie:', error.message);
+      console.error('Error fetching recommended movies:', error.message);
     } finally {
       setLoading(false);
     }
@@ -28,45 +29,78 @@ const MainScreen = () => {
 
   const saveMovieToList = async (movie) => {
     try {
-      let myList = await AsyncStorage.getItem('myList');
-      myList = myList ? JSON.parse(myList) : [];
-      myList.push(movie);
-      await AsyncStorage.setItem('myList', JSON.stringify(myList));
+      let savedMovies = await AsyncStorage.getItem('myList');
+      savedMovies = savedMovies ? JSON.parse(savedMovies) : [];
+      const exists = savedMovies.some((item) => item.imdbID === movie.imdbID);
+      if (exists) {
+        alert('This movie is already in your list!');
+        return;
+      }
+
+      savedMovies.push(movie);
+      await AsyncStorage.setItem('myList', JSON.stringify(savedMovies));
+
+      setMyList(savedMovies);
+
       alert('Movie successfully added to your list!');
     } catch (error) {
       console.error('Error saving movie:', error.message);
     }
   };
 
-  const openModal = (movie) => {
-    setRecommendedMovie(movie);
-    setIsModalVisible(true);
+  
+  const openMovieDetails = async (movie) => {
+    try {
+      const movieDetails = await fetchMovieDetails(movie.imdbID);
+      if (movieDetails) {
+        setSelectedMovie(movieDetails);
+        setIsModalVisible(true);
+      }
+    } catch (error) {
+      console.error('Error fetching movie details:', error.message);
+    }
   };
 
   const closeModal = () => {
     setIsModalVisible(false);
   };
 
-  useEffect(() => {
-    getRecommendedMovie();
-  }, []);
 
+  const handleSwipe = (gestureState) => {
+    if (gestureState.dx > 50 || gestureState.dx < -50) {
+      Animated.timing(swipeAnim, {
+        toValue: gestureState.dx > 0 ? 500 : -500,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setMovieQueue(prevQueue => {
+         
+          return prevQueue.slice(1);
+        });
+        swipeAnim.setValue(0);
+        if (movieQueue.length < 2) {
+          getRecommendedMovies(); 
+        }
+      });
+    }
+  };
+
+ 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 20,
-    onPanResponderRelease: (_, gestureState) => {
-      if (gestureState.dx > 50 || gestureState.dx < -50) {
-        Animated.timing(swipeAnim, {
-          toValue: gestureState.dx > 0 ? 500 : -500,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          setRecommendedMovie(null);
-          swipeAnim.setValue(0);
-          getRecommendedMovie();
-        });
-      }
-    },
+    onPanResponderRelease: (_, gestureState) => handleSwipe(gestureState),
   });
+
+  useEffect(() => {
+    getRecommendedMovies();
+   
+    const loadMyList = async () => {
+      const savedMovies = await AsyncStorage.getItem('myList');
+      const parsedMovies = savedMovies ? JSON.parse(savedMovies) : [];
+      setMyList(parsedMovies);
+    };
+    loadMyList();
+  }, []);
 
   if (loading) {
     return <Text>Loading...</Text>;
@@ -74,22 +108,21 @@ const MainScreen = () => {
 
   return (
     <View style={styles.container}>
-     
       <Text style={styles.title}>Swipe & Watch</Text>
 
-      {recommendedMovie && (
+      {movieQueue.length > 0 && (
         <Animated.View
           style={[styles.movieContainer, { transform: [{ translateX: swipeAnim }] }]}
           {...panResponder.panHandlers}
         >
-          <TouchableOpacity onPress={() => openModal(recommendedMovie)}>
-            <Image source={{ uri: recommendedMovie.Poster }} style={styles.poster} />
-            <Text style={styles.movieTitle}>{recommendedMovie.Title}</Text>
+          <TouchableOpacity onPress={() => openMovieDetails(movieQueue[0])}>
+            <Image source={{ uri: movieQueue[0].Poster }} style={styles.poster} />
+            <Text style={styles.movieTitle}>{movieQueue[0].Title}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.movieYear}>{recommendedMovie.Year}</Text>
+          <Text style={styles.movieYear}>{movieQueue[0].Year}</Text>
 
-          <TouchableOpacity style={styles.button} onPress={() => saveMovieToList(recommendedMovie)}>
+          <TouchableOpacity style={styles.button} onPress={() => saveMovieToList(movieQueue[0])}>
             <Text style={styles.buttonText}>Add to List</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -97,7 +130,7 @@ const MainScreen = () => {
 
       <MovieDetailsModal
         visible={isModalVisible}
-        movie={recommendedMovie}
+        movie={selectedMovie}
         onClose={closeModal}
       />
     </View>
@@ -131,7 +164,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flex: 1,
     justifyContent: 'center',
-    marginTop: 60, 
+    marginTop: 60,
   },
   poster: {
     width: 330,

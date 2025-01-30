@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, FlatList, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import MovieCard from '../components/MovieCard';
-import { fetchTopMovies, fetchTrendingMovies, searchMoviesByTitle } from '../services/api';
+import { fetchTopMovies, fetchTrendingMovies, searchMoviesByTitle, fetchMovieDetails } from '../services/api'; 
 import MovieDetailsModal from '../components/MovieDetailsModal'; 
 
 const ExploreScreen = () => {
@@ -37,9 +37,17 @@ const ExploreScreen = () => {
     }
   };
 
-  const handleMoviePress = (movie) => {
-    setSelectedMovie(movie); 
-    setModalVisible(true); 
+  const openMovieDetails = async (movie) => {
+    try {
+      const movieDetails = await fetchMovieDetails(movie.imdbID);
+
+      if (movieDetails) {
+        setSelectedMovie(movieDetails);
+        setModalVisible(true);
+      }
+    } catch (error) {
+      console.error('Error fetching movie details:', error.message);
+    }
   };
 
   const handleCloseModal = () => {
@@ -70,7 +78,7 @@ const ExploreScreen = () => {
                 data={searchResults}
                 keyExtractor={(item) => item.imdbID}
                 renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                  <TouchableOpacity onPress={() => openMovieDetails(item)}>
                     <MovieCard movie={item} />
                   </TouchableOpacity>
                 )}
@@ -87,7 +95,7 @@ const ExploreScreen = () => {
                 data={topMovies}
                 keyExtractor={(item) => item.imdbID}
                 renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                  <TouchableOpacity onPress={() => openMovieDetails(item)}>
                     <MovieCard movie={item} />
                   </TouchableOpacity>
                 )}
@@ -101,7 +109,7 @@ const ExploreScreen = () => {
                 data={trendingMovies}
                 keyExtractor={(item) => item.imdbID}
                 renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => handleMoviePress(item)}>
+                  <TouchableOpacity onPress={() => openMovieDetails(item)}>
                     <MovieCard movie={item} />
                   </TouchableOpacity>
                 )}
